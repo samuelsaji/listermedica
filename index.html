@@ -134,7 +134,7 @@ section{padding-block:clamp(64px,8vw,104px)}
 .phones a{display:flex;justify-content:space-between;gap:16px;max-width:360px;font-variant-numeric:tabular-nums}
 .phones a span{color:var(--ink-2);font-size:.9rem}
 .phones a:hover b{color:var(--drape)}
-form{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:clamp(22px,3vw,36px);display:grid;gap:16px}
+form{position:relative;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:clamp(22px,3vw,36px);display:grid;gap:16px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media (max-width:600px){.row{grid-template-columns:1fr}}
 label{display:grid;gap:6px;font-size:.85rem;font-weight:500}
@@ -325,8 +325,9 @@ footer{background:var(--ink);color:#B8CAD3;padding-block:40px;font-size:.88rem}
             </select>
           </label>
           <label for="f-msg">Requirement<textarea id="f-msg" name="message" placeholder="Procedure, items, approximate monthly quantity"></textarea></label>
-          <button class="btn btn-primary" type="submit">Send enquiry</button>
-          <p class="form-note">This opens your email app with the details filled in.</p>
+          <input type="text" name="website" id="f-website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+          <button class="btn btn-primary" type="submit" id="f-submit">Send enquiry</button>
+          <p class="form-note">We usually reply within one working day.</p>
           <p class="form-status" id="f-status" role="status"></p>
         </form>
       </div>
@@ -348,18 +349,34 @@ footer{background:var(--ink);color:#B8CAD3;padding-block:40px;font-size:.88rem}
 
 <script>
   document.getElementById('yr').textContent = new Date().getFullYear();
+  // Google Apps Script web app URL (ends in /exec). Leave empty to fall back to the visitor's email app.
+  var SCRIPT_URL = '';
+
   document.getElementById('enquiry').addEventListener('submit', function (e) {
     e.preventDefault();
-    var f = e.target, status = document.getElementById('f-status');
+    var f = e.target, status = document.getElementById('f-status'), btn = document.getElementById('f-submit');
     if (!f.name.value.trim() || !f.org.value.trim() || !f.phone.value.trim()) {
       status.textContent = 'Please add your name, organisation and phone number.';
       return;
     }
-    var body = 'Name: ' + f.name.value + '\nOrganisation: ' + f.org.value + '\nPhone: ' + f.phone.value +
-      '\nEmail: ' + f.email.value + '\nInterested in: ' + f.need.value + '\n\n' + f.message.value;
-    window.location.href = 'mailto:listermedica.cok@gmail.com?subject=' +
-      encodeURIComponent('Website enquiry: ' + f.need.value) + '&body=' + encodeURIComponent(body);
-    status.textContent = 'Your email app should open with the enquiry ready to send.';
+    if (!SCRIPT_URL) {
+      var body = 'Name: ' + f.name.value + '\nOrganisation: ' + f.org.value + '\nPhone: ' + f.phone.value +
+        '\nEmail: ' + f.email.value + '\nInterested in: ' + f.need.value + '\n\n' + f.message.value;
+      window.location.href = 'mailto:listermedica.cok@gmail.com?subject=' +
+        encodeURIComponent('Website enquiry: ' + f.need.value) + '&body=' + encodeURIComponent(body);
+      status.textContent = 'Your email app should open with the enquiry ready to send.';
+      return;
+    }
+    btn.disabled = true; btn.textContent = 'Sending…'; status.textContent = '';
+    fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: new URLSearchParams(new FormData(f)) })
+      .then(function () {
+        f.reset();
+        status.textContent = 'Thank you. Your enquiry has been sent and our team will contact you shortly.';
+      })
+      .catch(function () {
+        status.textContent = 'Your enquiry could not be sent. Please check your connection and try again, or call +91 92499 35648.';
+      })
+      .then(function () { btn.disabled = false; btn.textContent = 'Send enquiry'; });
   });
 </script>
 </body>
